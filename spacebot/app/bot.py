@@ -51,8 +51,18 @@ def add_subject(message):
     bot.send_message(message.chat.id, "Added subject %s" % find_subject_name(message.text))
 
 
+@bot.message_handler(content_types='text')
+def info(message):
+    bot.send_message(message.chat.id, """
+    To add a subject to looking for list send me its URL in the format
+    <code>https://my.ukma.edu.ua/course/242190</code>
+    Then type /look_for command and I'll notify you if someone left the group and there is a free space.
+    Good luck.)😉
+    """, parse_mode='HTML')
+
+
 @bot.message_handler(commands=['remove'], func=lambda message: 'https://my.ukma.edu.ua/course/' in message.text)
-def answer(message):
+def remove(message):
     if urls_to_subjects_dict.get(message.chat.id):
         urls_to_subjects_dict[message.chat.id].remove(message.text)
         users_data = get_users_data()
@@ -69,6 +79,12 @@ def answer(message):
 
 @bot.message_handler(commands=['look_for'])
 def look_for_free_space(message):
+    users_data = get_users_data()
+    user_id = str(message.chat.id)
+    if users_data.get(user_id) and users_data[user_id].get('running'):
+        bot.send_message(int(user_id), "You are already looking for free space.")
+        info(message)
+        return
     try:
         interval = int(message.text.split()[1])
     except (ValueError, IndexError) as e:
