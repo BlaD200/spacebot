@@ -1,15 +1,15 @@
 FROM python:latest
 
-WORKDIR /usr/src/app
+WORKDIR /usr/src/spacebot
 
-COPY app/requirements.txt ./requirements.txt
+COPY requirements.txt ./requirements.txt
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-COPY app /usr/src/app
+COPY spacebot /usr/src/project/
 
-EXPOSE 443
+EXPOSE 80
 
-ENV PORT 443
+ENV PORT 80
 
-ENV PYTHONPATH ${PYTHONPATH}:/usr/src/app
+ENV PYTHONPATH ${PYTHONPATH}:/usr/src/spacebot
 CMD [ "python3", "main.py" ]

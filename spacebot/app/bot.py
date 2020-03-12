@@ -3,8 +3,8 @@ from threading import Thread
 from time import sleep
 import json
 
-from spacebot.app.find_html_components import check, find_subject_name
-from spacebot.app.constants import bot_token
+from app.find_html_components import check, find_subject_name
+from app.constants import bot_token
 
 bot = TeleBot(bot_token)
 
