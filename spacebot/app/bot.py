@@ -53,11 +53,12 @@ def add_subject(message):
 
 @bot.message_handler(content_types='text')
 def info(message):
-    bot.send_message(message.chat.id, """
-    To add a subject to looking for list send me its URL in the format
-    <code>https://my.ukma.edu.ua/course/242190</code>
-    Then type /look_for command and I'll notify you if someone left the group and there is a free space.
-    Good luck.)😉
+    bot.send_message(message.chat.id,
+                     """
+To add a subject to looking for list send me its URL in the format
+<a href="https://my.ukma.edu.ua/course/242190">https://my.ukma.edu.ua/course/242190</a>
+Then type /look_for command and I'll notify you if someone left the group and there is a free space.
+Good luck.)😉
     """, parse_mode='HTML')
 
 
