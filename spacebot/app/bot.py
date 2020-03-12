@@ -37,7 +37,7 @@ def add_subject(message):
         urls_to_subjects_dict[message.chat.id] = []
         urls_to_subjects_dict[message.chat.id].append(message.text)
     users_data = get_users_data()
-    with open('spacebot/app/users_data.json', 'w') as f:
+    with open('users_data.json', 'w') as f:
         chat_id = str(message.chat.id)
         if users_data.get(chat_id):
             users_data[chat_id]['subjects'].append(message.text)
@@ -56,7 +56,7 @@ def answer(message):
     if urls_to_subjects_dict.get(message.chat.id):
         urls_to_subjects_dict[message.chat.id].remove(message.text)
         users_data = get_users_data()
-        with open('spacebot/app/users_data.json', 'w') as f:
+        with open('users_data.json', 'w') as f:
             chat_id = str(message.chat.id)
             if users_data.get(chat_id):
                 users_data[chat_id]['subjects'].remove(message.text)
@@ -90,7 +90,7 @@ def start_thread(chat_id, interval):
     user_threads[chat_id] = thread
 
     users_data = get_users_data()
-    with open('spacebot/app/users_data.json', 'w') as f:
+    with open('users_data.json', 'w') as f:
         chat_id = str(chat_id)
         if users_data.get(chat_id):
             users_data[chat_id]['running'] = True
@@ -106,7 +106,7 @@ def stop_look_for_free_space(message):
         user_threads[chat_id].join()
 
         users_data = get_users_data()
-        with open('spacebot/app/users_data.json', 'w') as f:
+        with open('users_data.json', 'w') as f:
             user_id = str(message.chat.id)
             if users_data.get(user_id):
                 users_data[user_id]['running'] = False
