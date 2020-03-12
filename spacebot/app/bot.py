@@ -14,14 +14,14 @@ user_threads = {}
 
 def get_users_data():
     try:
-        with open('spacebot/app/users_data.json', 'r') as f:
+        with open('users_data.json', 'r') as f:
             return json.load(f)
     except FileNotFoundError as e:
         from os import listdir
         print(listdir())
-        with open('spacebot/app/users_data.json.json', 'w') as f:
+        with open('users_data.json.json', 'w') as f:
             json.dump({}, f)
-        with open('spacebot/app/users_data.json.json') as f:
+        with open('users_data.json.json') as f:
             return json.load(f)
 
 
