@@ -12,4 +12,5 @@ EXPOSE 80
 ENV PORT 80
 
 ENV PYTHONPATH ${PYTHONPATH}:/usr/src/project
-CMD [ "python3", "spacebot/app/main.py" ]
+WORKDIR /usr/src/project/spacebot/app
+CMD ["gunicorn", "--bind", "0.0.0.0:80", "main:app"]

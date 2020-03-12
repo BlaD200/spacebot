@@ -12,6 +12,19 @@ urls_to_subjects_dict = {}
 user_threads = {}
 
 
+def get_users_data():
+    try:
+        with open('spacebot/app/users_data.json', 'r') as f:
+            return json.load(f)
+    except FileNotFoundError as e:
+        from os import listdir
+        print(listdir())
+        with open('spacebot/app/users_data.json.json', 'w') as f:
+            json.dump({}, f)
+        with open('spacebot/app/users_data.json.json') as f:
+            return json.load(f)
+
+
 @bot.message_handler(content_types='text', func=lambda message: 'https://my.ukma.edu.ua/course/' in message.text)
 def add_subject(message):
     if urls_to_subjects_dict.get(message.chat.id):
@@ -23,8 +36,7 @@ def add_subject(message):
     else:
         urls_to_subjects_dict[message.chat.id] = []
         urls_to_subjects_dict[message.chat.id].append(message.text)
-    with open('spacebot/app/users_data.json', 'r') as f:
-        users_data = json.load(f)
+    users_data = get_users_data()
     with open('spacebot/app/users_data.json', 'w') as f:
         chat_id = str(message.chat.id)
         if users_data.get(chat_id):
@@ -43,8 +55,7 @@ def add_subject(message):
 def answer(message):
     if urls_to_subjects_dict.get(message.chat.id):
         urls_to_subjects_dict[message.chat.id].remove(message.text)
-        with open('spacebot/app/users_data.json', 'r') as f:
-            users_data = json.load(f)
+        users_data = get_users_data()
         with open('spacebot/app/users_data.json', 'w') as f:
             chat_id = str(message.chat.id)
             if users_data.get(chat_id):
@@ -78,8 +89,7 @@ def start_thread(chat_id, interval):
     thread.start()
     user_threads[chat_id] = thread
 
-    with open('spacebot/app/users_data.json', 'r') as f:
-        users_data = json.load(f)
+    users_data = get_users_data()
     with open('spacebot/app/users_data.json', 'w') as f:
         chat_id = str(chat_id)
         if users_data.get(chat_id):
@@ -94,8 +104,8 @@ def stop_look_for_free_space(message):
     if user_threads.get(chat_id):
         user_threads[chat_id].terminate()
         user_threads[chat_id].join()
-        with open('spacebot/app/users_data.json', 'r') as f:
-            users_data = json.load(f)
+
+        users_data = get_users_data()
         with open('spacebot/app/users_data.json', 'w') as f:
             user_id = str(message.chat.id)
             if users_data.get(user_id):
@@ -140,15 +150,14 @@ class LookForFreeSpaceTask(Thread):
 
 
 def restore_users():
-    with open('spacebot/app/users_data.json', 'r') as f:
-        users_data = json.load(f)
-        for user_id, user_data in users_data.items():
-            user_id = int(user_id)
-            for subject_url in user_data['subjects']:
-                if urls_to_subjects_dict.get(user_id):
-                    urls_to_subjects_dict[user_id].append(subject_url)
-                else:
-                    urls_to_subjects_dict[user_id] = []
-                    urls_to_subjects_dict[user_id].append(subject_url)
-            if user_data['running']:
-                start_thread(user_id, user_data['interval'])
+    users_data = get_users_data()
+    for user_id, user_data in users_data.items():
+        user_id = int(user_id)
+        for subject_url in user_data['subjects']:
+            if urls_to_subjects_dict.get(user_id):
+                urls_to_subjects_dict[user_id].append(subject_url)
+            else:
+                urls_to_subjects_dict[user_id] = []
+                urls_to_subjects_dict[user_id].append(subject_url)
+        if user_data['running']:
+            start_thread(user_id, user_data['interval'])
