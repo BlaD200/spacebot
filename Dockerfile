@@ -12,4 +12,4 @@ EXPOSE 80
 ENV PORT 80
 
 ENV PYTHONPATH ${PYTHONPATH}:/usr/src/project
-CMD [ "python3", "main.py" ]
+CMD [ "python3", "spacebot/app/main.py" ]
