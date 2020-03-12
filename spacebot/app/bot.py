@@ -4,8 +4,9 @@ from time import sleep
 import json
 
 from spacebot.app.find_html_components import check, find_subject_name
+from spacebot.app.constants import bot_token
 
-bot = TeleBot('937006982:AAGWKv-_o-oHJayG2oTqwJC4yjXE9puV2xE')
+bot = TeleBot(bot_token)
 
 urls_to_subjects_dict = {}
 user_threads = {}
