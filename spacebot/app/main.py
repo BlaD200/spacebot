@@ -3,7 +3,7 @@ from os import getenv
 
 from telebot.types import Update
 
-from app.bot import restore_users, bot
+from spacebot.app.bot import restore_users, bot
 
 app = Flask(__name__)
 
