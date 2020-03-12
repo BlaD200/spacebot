@@ -19,9 +19,9 @@ def get_users_data():
     except FileNotFoundError as e:
         from os import listdir
         print(listdir())
-        with open('users_data.json.json', 'w') as f:
+        with open('users_data.json', 'w') as f:
             json.dump({}, f)
-        with open('users_data.json.json') as f:
+        with open('users_data.json') as f:
             return json.load(f)
 
 
