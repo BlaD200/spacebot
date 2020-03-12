@@ -1,0 +1,13 @@
+runtime: python37
+
+instance_class: F2
+
+env_variables:
+  PORT: 443
+
+handlers:
+# Matches requests to /images/... to files in static/images/...
+- url: /.*
+  secure: always
+  redirect_http_response_code: 301
+  script: auto
