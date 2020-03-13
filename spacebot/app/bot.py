@@ -1,7 +1,6 @@
 from telebot import TeleBot
 from threading import Thread
 from time import sleep
-from requests import get
 from requests.exceptions import InvalidSchema, InvalidURL, MissingSchema
 import json
 
@@ -20,7 +19,8 @@ def get_users_data():
             return json.load(f)
     except FileNotFoundError as e:
         from os import listdir
-        print(listdir())
+        from sys import stderr
+        print(listdir(), file=stderr)
         with open('users_data.json', 'w') as f:
             json.dump({}, f)
         with open('users_data.json') as f:
@@ -33,7 +33,7 @@ def remove(message):
     url_to_remove = ""
     try:
         url_to_remove = message.text.split(' ')[1]
-        find_subject_name(url_to_remove)
+        subject_name = find_subject_name(url_to_remove)
     except IndexError:
         bot.send_message(chat_id, "You must specify a URL to subject after /remove command.")
         return
@@ -46,13 +46,13 @@ def remove(message):
         users_data = get_users_data()
         with open('users_data.json', 'w') as f:
             chat_id = str(chat_id)
-            if users_data.get(chat_id):
+            if users_data.get(chat_id) and url_to_remove in users_data[chat_id]['subjects']:
                 users_data[chat_id]['subjects'].remove(url_to_remove)
             json.dump(users_data, f)
 
-        bot.send_message(chat_id, "Removed subject \"%s\"." % find_subject_name(url_to_remove))
+        bot.send_message(chat_id, "Removed subject \"%s\"." % subject_name)
     else:
-        bot.send_message(chat_id, "Subject \"%s\" didn't find in your list." % find_subject_name(url_to_remove))
+        bot.send_message(chat_id, "Subject \"%s\" didn't find in your list." % subject_name)
 
 
 @bot.message_handler(commands=['remove'])
@@ -67,6 +67,10 @@ def look_for_free_space(message):
     user_id = str(message.chat.id)
     if users_data.get(user_id) and users_data[user_id].get('running'):
         bot.send_message(int(user_id), "You are already looking for free space.")
+        info(message)
+        return
+    elif not urls_to_subjects_dict.get(int(user_id)):
+        bot.send_message(int(user_id), "Your looking for list is empty. Add some subjects first.")
         info(message)
         return
     try:
@@ -120,7 +124,7 @@ def add_subject(message):
     for url in message.text.split('\n'):
         url = url.strip()
         try:
-            find_subject_name(url)
+            subject_name = find_subject_name(url)
         except (InvalidSchema, InvalidURL, MissingSchema, AttributeError):
             bot.send_message(user_id, "Invalid link: \"%s\". Cannot find related subject." % url)
             continue
@@ -129,9 +133,9 @@ def add_subject(message):
                 urls_to_subjects_dict[user_id].append(url)
             else:
                 bot.send_message(user_id,
-                                 f'The subject <a href="{url}">{find_subject_name(url)}</a> is already being looking for.',
+                                 f'The subject <a href="{url}">{subject_name}</a> is already being looking for.',
                                  parse_mode='HTML')
-            continue
+                continue
         else:
             urls_to_subjects_dict[user_id] = []
             urls_to_subjects_dict[user_id].append(url)
@@ -147,7 +151,7 @@ def add_subject(message):
                 users_data[chat_id] = user_data
             json.dump(users_data, f)
 
-        bot.send_message(user_id, "Added subject %s" % find_subject_name(url))
+        bot.send_message(user_id, "Added subject %s" % subject_name)
 
 
 @bot.message_handler(content_types='text')
@@ -213,6 +217,8 @@ class LookForFreeSpaceTask(Thread):
                     messages.append(f'<b>{response[1]}</b> : "<a href="{response[0]}">{find_subject_name(url)}</a>"\n')
                 else:
                     messages.append(f'<b>No free space</b> for \n"<a href="{url}">{find_subject_name(url)}</a>"\n')
+            if not len(messages):
+                continue
             if all(['No' in message for message in messages]):
                 bot.send_message(self._chat_id, ''.join(messages), disable_notification=True, parse_mode='HTML')
             else:
