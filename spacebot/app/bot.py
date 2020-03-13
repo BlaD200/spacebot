@@ -2,7 +2,7 @@ from telebot import TeleBot
 from threading import Thread
 from time import sleep
 from requests import get
-from requests.exceptions import InvalidSchema
+from requests.exceptions import InvalidSchema, InvalidURL, MissingSchema
 import json
 
 from spacebot.app.find_html_components import check, find_subject_name
@@ -29,21 +29,36 @@ def get_users_data():
 
 @bot.message_handler(commands=['remove'], func=lambda message: 'https://my.ukma.edu.ua/course/' in message.text)
 def remove(message):
-    if urls_to_subjects_dict.get(message.chat.id):
-        urls_to_subjects_dict[message.chat.id].remove(message.text)
+    chat_id = message.chat.id
+    url_to_remove = ""
+    try:
+        url_to_remove = message.text.split(' ')[1]
+        find_subject_name(url_to_remove)
+    except IndexError:
+        bot.send_message(chat_id, "You must specify a URL to subject after /remove command.")
+        return
+    except (InvalidURL, InvalidSchema, MissingSchema, AttributeError):
+        bot.send_message(chat_id, f"Invalid URL: \"{url_to_remove}\". Cannot find related subject.")
+        return
+
+    if urls_to_subjects_dict.get(chat_id) and url_to_remove in urls_to_subjects_dict[chat_id]:
+        urls_to_subjects_dict[chat_id].remove(url_to_remove)
         users_data = get_users_data()
         with open('users_data.json', 'w') as f:
-            chat_id = str(message.chat.id)
+            chat_id = str(chat_id)
             if users_data.get(chat_id):
-                users_data[chat_id]['subjects'].remove(message.text)
+                users_data[chat_id]['subjects'].remove(url_to_remove)
             json.dump(users_data, f)
 
-        bot.send_message(message.chat.id, "Removed subject \"%s\"." % find_subject_name(message.text))
+        bot.send_message(chat_id, "Removed subject \"%s\"." % find_subject_name(url_to_remove))
     else:
-        try:
-            bot.send_message(message.chat.id, "Subject \"%s\" didn't find." % find_subject_name(message.text))
-        except InvalidSchema as e:
-            bot.send_message(message.chat.id, "Invalid input: %s" % message.text)
+        bot.send_message(chat_id, "Subject \"%s\" didn't find in your list." % find_subject_name(url_to_remove))
+
+
+@bot.message_handler(commands=['remove'])
+def remove(message):
+    bot.send_message(message.chat.id, "To remove the subject from looking for list, types:\n"
+                                      "/remove <URL to subject>")
 
 
 @bot.message_handler(commands=['look_for'])
@@ -56,7 +71,12 @@ def look_for_free_space(message):
         return
     try:
         interval = int(message.text.split()[1])
-    except (ValueError, IndexError) as e:
+    except ValueError:
+        bot.send_message(int(user_id), f"Please, give an integer. "
+                                       f"<b>{message.text.split()[1]}</b> cannot be interpreted as an integer.",
+                         parse_mode='HTML')
+        interval = 120
+    except IndexError:
         interval = 120
     chat_id = message.chat.id
     start_thread(chat_id, interval)
@@ -88,7 +108,7 @@ def subjects_list(message):
     user_id = message.chat.id
     if urls_to_subjects_dict.get(user_id):
         bot.send_message(user_id, '\n'.join(
-            [f'<a href="{url}">{find_subject_name(url)}</a>' for url in urls_to_subjects_dict[user_id]]),
+            [f'•<a href="{url}">{find_subject_name(url)}</a>\n' for url in urls_to_subjects_dict[user_id]]),
                          parse_mode='HTML')
     else:
         bot.send_message(user_id, "You haven't got any subjects in the search list yet.")
@@ -96,35 +116,38 @@ def subjects_list(message):
 
 @bot.message_handler(content_types='text', func=lambda message: 'https://my.ukma.edu.ua/course/' in message.text)
 def add_subject(message):
+    user_id = message.chat.id
     for url in message.text.split('\n'):
         url = url.strip()
         try:
-            get(url)
-        except InvalidSchema as e:
-            bot.send_message(message.chat.id, "Invalid link: %s" % url)
-            return
-        if urls_to_subjects_dict.get(message.chat.id):
-            if message.text not in urls_to_subjects_dict[message.chat.id]:
-                urls_to_subjects_dict[message.chat.id].append(message.text)
+            find_subject_name(url)
+        except (InvalidSchema, InvalidURL, MissingSchema, AttributeError):
+            bot.send_message(user_id, "Invalid link: \"%s\". Cannot find related subject." % url)
+            continue
+        if urls_to_subjects_dict.get(user_id):
+            if url not in urls_to_subjects_dict[user_id]:
+                urls_to_subjects_dict[user_id].append(url)
             else:
-                bot.send_message(message.chat.id, 'This subject is already being looking for.')
-                return
+                bot.send_message(user_id,
+                                 f'The subject <a href="{url}">{find_subject_name(url)}</a> is already being looking for.',
+                                 parse_mode='HTML')
+            continue
         else:
-            urls_to_subjects_dict[message.chat.id] = []
-            urls_to_subjects_dict[message.chat.id].append(message.text)
+            urls_to_subjects_dict[user_id] = []
+            urls_to_subjects_dict[user_id].append(url)
         users_data = get_users_data()
         with open('users_data.json', 'w') as f:
-            chat_id = str(message.chat.id)
+            chat_id = str(user_id)
             if users_data.get(chat_id):
-                users_data[chat_id]['subjects'].append(message.text)
+                users_data[chat_id]['subjects'].append(url)
             else:
                 user_data = {'subjects': []}
-                user_data['subjects'].append(message.text)
+                user_data['subjects'].append(url)
                 user_data['running'] = False
                 users_data[chat_id] = user_data
             json.dump(users_data, f)
 
-        bot.send_message(message.chat.id, "Added subject %s" % find_subject_name(message.text))
+        bot.send_message(user_id, "Added subject %s" % find_subject_name(url))
 
 
 @bot.message_handler(content_types='text')
