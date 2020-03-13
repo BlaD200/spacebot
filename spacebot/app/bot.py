@@ -40,7 +40,10 @@ def remove(message):
 
         bot.send_message(message.chat.id, "Removed subject \"%s\"." % find_subject_name(message.text))
     else:
-        bot.send_message(message.chat.id, "Subject \"%s\" didn't find." % find_subject_name(message.text))
+        try:
+            bot.send_message(message.chat.id, "Subject \"%s\" didn't find." % find_subject_name(message.text))
+        except InvalidSchema as e:
+            bot.send_message(message.chat.id, "Invalid input: %s" % message.text)
 
 
 @bot.message_handler(commands=['look_for'])
@@ -94,32 +97,34 @@ def subjects_list(message):
 @bot.message_handler(content_types='text', func=lambda message: 'https://my.ukma.edu.ua/course/' in message.text)
 def add_subject(message):
     for url in message.text.split('\n'):
+        url = url.strip()
         try:
             get(url)
-            if urls_to_subjects_dict.get(message.chat.id):
-                if message.text not in urls_to_subjects_dict[message.chat.id]:
-                    urls_to_subjects_dict[message.chat.id].append(message.text)
-                else:
-                    bot.send_message(message.chat.id, 'This subject is already being looking for.')
-                    return
-            else:
-                urls_to_subjects_dict[message.chat.id] = []
-                urls_to_subjects_dict[message.chat.id].append(message.text)
-            users_data = get_users_data()
-            with open('users_data.json', 'w') as f:
-                chat_id = str(message.chat.id)
-                if users_data.get(chat_id):
-                    users_data[chat_id]['subjects'].append(message.text)
-                else:
-                    user_data = {'subjects': []}
-                    user_data['subjects'].append(message.text)
-                    user_data['running'] = False
-                    users_data[chat_id] = user_data
-                json.dump(users_data, f)
-
-            bot.send_message(message.chat.id, "Added subject %s" % find_subject_name(message.text))
         except InvalidSchema as e:
             bot.send_message(message.chat.id, "Invalid link: %s" % url)
+            return
+        if urls_to_subjects_dict.get(message.chat.id):
+            if message.text not in urls_to_subjects_dict[message.chat.id]:
+                urls_to_subjects_dict[message.chat.id].append(message.text)
+            else:
+                bot.send_message(message.chat.id, 'This subject is already being looking for.')
+                return
+        else:
+            urls_to_subjects_dict[message.chat.id] = []
+            urls_to_subjects_dict[message.chat.id].append(message.text)
+        users_data = get_users_data()
+        with open('users_data.json', 'w') as f:
+            chat_id = str(message.chat.id)
+            if users_data.get(chat_id):
+                users_data[chat_id]['subjects'].append(message.text)
+            else:
+                user_data = {'subjects': []}
+                user_data['subjects'].append(message.text)
+                user_data['running'] = False
+                users_data[chat_id] = user_data
+            json.dump(users_data, f)
+
+        bot.send_message(message.chat.id, "Added subject %s" % find_subject_name(message.text))
 
 
 @bot.message_handler(content_types='text')
