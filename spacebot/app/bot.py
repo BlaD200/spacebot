@@ -51,17 +51,6 @@ def add_subject(message):
     bot.send_message(message.chat.id, "Added subject %s" % find_subject_name(message.text))
 
 
-@bot.message_handler(content_types='text')
-def info(message):
-    bot.send_message(message.chat.id,
-                     """
-To add a subject to looking for list send me its URL in the format
-<a href="https://my.ukma.edu.ua/course/242190">https://my.ukma.edu.ua/course/242190</a>
-Then type /look_for command and I'll notify you if someone left the group and there is a free space.
-Good luck.)😉
-    """, parse_mode='HTML')
-
-
 @bot.message_handler(commands=['remove'], func=lambda message: 'https://my.ukma.edu.ua/course/' in message.text)
 def remove(message):
     if urls_to_subjects_dict.get(message.chat.id):
@@ -96,6 +85,47 @@ def look_for_free_space(message):
                                       "seconds.", parse_mode='HTML')
 
 
+@bot.message_handler(commands=['stop_look_for'])
+def stop_look_for_free_space(message):
+    chat_id = message.chat.id
+    if user_threads.get(chat_id):
+        user_threads[chat_id].terminate()
+        user_threads[chat_id].join()
+
+        users_data = get_users_data()
+        with open('users_data.json', 'w') as f:
+            user_id = str(message.chat.id)
+            if users_data.get(user_id):
+                users_data[user_id]['running'] = False
+            json.dump(users_data, f)
+
+        bot.send_message(chat_id, "Looking for a free space on subjects was stopped.")
+    else:
+        bot.send_message(chat_id, "You haven't been looking for free space...")
+
+
+@bot.message_handler(commands=['list'])
+def subjects_list(message):
+    user_id = message.chat.id
+    if urls_to_subjects_dict.get(user_id):
+        bot.send_message(user_id, '\n'.join(
+            [f'<a href="{url}">{find_subject_name(url)}</a>' for url in urls_to_subjects_dict[user_id]]),
+                         parse_mode='HTML')
+    else:
+        bot.send_message(user_id, "You haven't got any subjects in the search list yet.")
+
+
+@bot.message_handler(content_types='text')
+def info(message):
+    bot.send_message(message.chat.id,
+                     """
+To add a subject to searching list, send me its URL in the format
+<a href="https://my.ukma.edu.ua/course/242190">https://my.ukma.edu.ua/course/242190</a>
+Then type /look_for command and I'll notify you if someone left the group and there is a free space.
+Good luck.)😉
+    """, parse_mode='HTML')
+
+
 def start_thread(chat_id, interval):
     if user_threads.get(chat_id):
         user_threads[chat_id].terminate()
@@ -115,23 +145,18 @@ def start_thread(chat_id, interval):
         json.dump(users_data, f)
 
 
-@bot.message_handler(commands=['stop_look_for'])
-def stop_look_for_free_space(message):
-    chat_id = message.chat.id
-    if user_threads.get(chat_id):
-        user_threads[chat_id].terminate()
-        user_threads[chat_id].join()
-
-        users_data = get_users_data()
-        with open('users_data.json', 'w') as f:
-            user_id = str(message.chat.id)
-            if users_data.get(user_id):
-                users_data[user_id]['running'] = False
-            json.dump(users_data, f)
-
-        bot.send_message(chat_id, "Looking for a free space on subjects was stopped.")
-    else:
-        bot.send_message(chat_id, "You haven't been looking for free space...")
+def restore_users():
+    users_data = get_users_data()
+    for user_id, user_data in users_data.items():
+        user_id = int(user_id)
+        for subject_url in user_data['subjects']:
+            if urls_to_subjects_dict.get(user_id):
+                urls_to_subjects_dict[user_id].append(subject_url)
+            else:
+                urls_to_subjects_dict[user_id] = []
+                urls_to_subjects_dict[user_id].append(subject_url)
+        if user_data['running']:
+            start_thread(user_id, user_data['interval'])
 
 
 class LookForFreeSpaceTask(Thread):
@@ -164,17 +189,3 @@ class LookForFreeSpaceTask(Thread):
             else:
                 continue
             break
-
-
-def restore_users():
-    users_data = get_users_data()
-    for user_id, user_data in users_data.items():
-        user_id = int(user_id)
-        for subject_url in user_data['subjects']:
-            if urls_to_subjects_dict.get(user_id):
-                urls_to_subjects_dict[user_id].append(subject_url)
-            else:
-                urls_to_subjects_dict[user_id] = []
-                urls_to_subjects_dict[user_id].append(subject_url)
-        if user_data['running']:
-            start_thread(user_id, user_data['interval'])
